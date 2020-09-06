@@ -6,6 +6,7 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 import math
 from submodule import *
+from torchvision.utils import save_image
 
 class hourglass(nn.Module):
     def __init__(self, inplanes):
@@ -101,7 +102,6 @@ class PSMNet(nn.Module):
 
 
     def forward(self, left, right):
-
         refimg_fea     = self.feature_extraction(left)
         targetimg_fea  = self.feature_extraction(right)
 
@@ -135,16 +135,17 @@ class PSMNet(nn.Module):
         cost3 = self.classif3(out3) + cost2
 
         if self.training:
-		cost1 = F.upsample(cost1, [self.maxdisp,left.size()[2],left.size()[3]], mode='trilinear')
-		cost2 = F.upsample(cost2, [self.maxdisp,left.size()[2],left.size()[3]], mode='trilinear')
+            cost1 = F.upsample(cost1, [self.maxdisp,left.size()[2],left.size()[3]], mode='trilinear')
+            cost2 = F.upsample(cost2, [self.maxdisp,left.size()[2],left.size()[3]], mode='trilinear')
 
-		cost1 = torch.squeeze(cost1,1)
-		pred1 = F.softmax(cost1,dim=1)
-		pred1 = disparityregression(self.maxdisp)(pred1)
-
-		cost2 = torch.squeeze(cost2,1)
-		pred2 = F.softmax(cost2,dim=1)
-		pred2 = disparityregression(self.maxdisp)(pred2)
+            cost1 = torch.squeeze(cost1,1)
+            pred1 = F.softmax(cost1,dim=1)
+            pred1 = disparityregression(self.maxdisp)(pred1)
+            # save_image(pred1,"pred1.png")
+            cost2 = torch.squeeze(cost2,1)
+            pred2 = F.softmax(cost2,dim=1)
+            pred2 = disparityregression(self.maxdisp)(pred2)
+            # save_image(pred2*255,"pred2.png")
 
         cost3 = F.upsample(cost3, [self.maxdisp,left.size()[2],left.size()[3]], mode='trilinear')
         cost3 = torch.squeeze(cost3,1)
@@ -153,6 +154,7 @@ class PSMNet(nn.Module):
 	#while 'softmax(-c)' learned 'matching cost' as mentioned in the paper.
 	#However, 'c' or '-c' do not affect the performance because feature-based cost volume provided flexibility.
         pred3 = disparityregression(self.maxdisp)(pred3)
+        # save_image(pred3/torch.max(pred3),"pred3.png")    
 
         if self.training:
             return pred1, pred2, pred3
