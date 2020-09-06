@@ -4,8 +4,7 @@ Overview
 input left and right image. you can get depth
 
 ## Requirement
-pcl  
-opencv
+opencv2
 
 ## Install
 mkdir build  
