@@ -1,2 +1,4 @@
 dataloader/*pyc
+dataloader/__pycache__/
 .vscode/
+models/*.pyc
