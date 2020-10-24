@@ -12,7 +12,7 @@ import time
 import math
 from dataloader import KITTIloader2015 as lt
 from dataloader import KITTILoader as DA
-from models import stackhourglass as net
+from models import basic as net
 
 parser = argparse.ArgumentParser(description='PSMNet')
 parser.add_argument('--maxdisp', type=int ,default=192,
@@ -168,7 +168,7 @@ def main():
 
 
 
-        SAVE
+        #SAVE
         savefilename = args.savemodel+'/checkpoint_'+str(epoch)+'.tar'
         torch.save({
 		    'epoch': epoch,

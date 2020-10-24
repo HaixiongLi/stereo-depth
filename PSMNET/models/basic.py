@@ -74,16 +74,17 @@ class PSMNet(nn.Module):
              cost[:, refimg_fea.size()[1]:, i, :,:]   = targetimg_fea
         cost = cost.contiguous()
 
-        cost0 = self.dres0(cost)
-        cost0 = self.dres1(cost0) + cost0
-        cost0 = self.dres2(cost0) + cost0 
-        cost0 = self.dres3(cost0) + cost0 
-        cost0 = self.dres4(cost0) + cost0
+        cost0 = self.dres0(cost)#this layer should hangle matching mainly
+        cost0 = self.dres1(cost0) + cost0 #refinement
+        cost0 = self.dres2(cost0) + cost0 #refinement
+        cost0 = self.dres3(cost0) + cost0 #refinement
+        cost0 = self.dres4(cost0) + cost0 #refinement
 
-        cost = self.classify(cost0)
-        cost = F.upsample(cost, [self.maxdisp,left.size()[2],left.size()[3]], mode='trilinear')
+        cost = self.classify(cost0)#add feature to how the feature are high(weight should be all 1.0(3x3))
+        print(cost.shape)
+        cost = F.upsample(cost, [self.maxdisp,left.size()[2],left.size()[3]], mode='trilinear') #upsample to original size
         cost = torch.squeeze(cost,1)
-        pred = F.softmax(cost)
-        pred = disparityregression(self.maxdisp)(pred)
+        pred = F.softmax(cost)#normalize feature
+        pred = disparityregression(self.maxdisp)(pred)#SoftArgMax
 
         return pred
