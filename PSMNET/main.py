@@ -12,7 +12,9 @@ import time
 import math
 from dataloader import KITTIloader2015 as lt
 from dataloader import KITTILoader as DA
-from models import basic as net
+from models import stackhourglass as psm_net
+from models import basic as basic_net
+from torchvision.utils import save_image
 
 parser = argparse.ArgumentParser(description='PSMNet')
 parser.add_argument('--maxdisp', type=int ,default=192,
@@ -51,9 +53,9 @@ TestImgLoader = torch.utils.data.DataLoader(
 
 
 if args.model == 'stackhourglass':
-    model = net.PSMNet(args.maxdisp)
+    model = psm_net.PSMNet(args.maxdisp)
 elif args.model == 'basic':
-    model = net.PSMNet(args.maxdisp)
+    model = basic_net.PSMNet(args.maxdisp)
 else:
     print('no model')
 
@@ -79,25 +81,35 @@ def train(imgL,imgR, disp_L):
         if args.cuda:
             imgL, imgR, disp_true = imgL.cuda(), imgR.cuda(), disp_L.cuda()
 
-       #---------
-        mask = disp_true < args.maxdisp
+        mask = (disp_true < args.maxdisp)
+        mask = (disp_true > 0) # this is required, dispity should be more than 0
         mask.detach_()
-        #----
         optimizer.zero_grad()
+
         
         if args.model == 'stackhourglass':
             output1, output2, output3 = model(imgL,imgR)
             output1 = torch.squeeze(output1,1)
             output2 = torch.squeeze(output2,1)
             output3 = torch.squeeze(output3,1)
+            
+            #TODO! remove this lines after debug
+            # save_image(output1/torch.max(output1), 'output1.png')
+            # save_image(output2/torch.max(output2), 'output2.png')
+            # save_image(output3/torch.max(output3), 'output3.png')
+
             loss = 0.5*F.smooth_l1_loss(output1[mask], disp_true[mask], size_average=True) + 0.7*F.smooth_l1_loss(output2[mask], disp_true[mask], size_average=True) + F.smooth_l1_loss(output3[mask], disp_true[mask], size_average=True) 
+            
         elif args.model == 'basic':
             output = model(imgL,imgR)
             output = torch.squeeze(output,1)
+            
             loss = F.smooth_l1_loss(output[mask], disp_true[mask], size_average=True)
 
         loss.backward()
         optimizer.step()
+
+
 
         return loss.data
 
@@ -106,9 +118,9 @@ def test(imgL,imgR,disp_true):
 
     if args.cuda:
         imgL, imgR, disp_true = imgL.cuda(), imgR.cuda(), disp_true.cuda()
-    #---------
-    mask = disp_true < 192
-    #----
+
+    mask = disp_true < args.maxdisp
+    mask = (disp_true > 0)
 
     if imgL.shape[2] % 16 != 0:
         times = imgL.shape[2]//16       
@@ -145,6 +157,13 @@ def test(imgL,imgR,disp_true):
 
 def adjust_learning_rate(optimizer, epoch):
     lr = 0.001
+    if epoch < 10:
+        lr = 0.001
+    elif epoch < 20:
+        lr = 0.0001
+    else:
+        lr = 0.00001
+    
     print(lr)
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
@@ -160,6 +179,7 @@ def main():
 
         ## training ##
         for batch_idx, (imgL_crop, imgR_crop, disp_crop_L) in enumerate(TrainImgLoader):
+
             start_time = time.time()
             loss = train(imgL_crop,imgR_crop, disp_crop_L)
             print('Iter %d training loss = %.3f , time = %.2f' %(batch_idx, loss, time.time() - start_time))
@@ -176,6 +196,8 @@ def main():
                     'train_loss': total_train_loss/len(TrainImgLoader),
 		}, savefilename)
         print('full training time = %.2f HR' %((time.time() - start_full_time)/3600))
+
+
         #------------- TEST ------------------------------------------------------------
         total_test_loss = 0
         for batch_idx, (imgL, imgR, disp_L) in enumerate(TestImgLoader):

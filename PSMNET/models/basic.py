@@ -81,7 +81,6 @@ class PSMNet(nn.Module):
         cost0 = self.dres4(cost0) + cost0 #refinement
 
         cost = self.classify(cost0)#add feature to how the feature are high(weight should be all 1.0(3x3))
-        print(cost.shape)
         cost = F.upsample(cost, [self.maxdisp,left.size()[2],left.size()[3]], mode='trilinear') #upsample to original size
         cost = torch.squeeze(cost,1)
         pred = F.softmax(cost)#normalize feature
