@@ -15,6 +15,8 @@ https://github.com/JiaRenChang/PSMNet
 - [KITTI Stereo](http://www.cvlibs.net/datasets/kitti/eval_stereo.php)
 
 ### Train
-As an example, use the following command to train a PSMNet on Kitti
+sh train.sh
 
-bash train.sh
+
+### Inference
+sh inference.sh
