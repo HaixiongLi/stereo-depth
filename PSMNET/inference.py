@@ -11,10 +11,9 @@ import time
 import math
 from models import stackhourglass as psm_net
 from models import basic as basic_net
-import cv2
 from PIL import Image
 from torchvision.utils import save_image
-# 2012 data /media/jiaren/ImageNet/data_scene_flow_2012/testing/
+
 
 parser = argparse.ArgumentParser(description='PSMNet')
 parser.add_argument('--KITTI', default='2015',
@@ -22,11 +21,7 @@ parser.add_argument('--KITTI', default='2015',
 parser.add_argument('--datapath', default='/media/jiaren/ImageNet/data_scene_flow_2015/testing/',
                     help='select model')
 parser.add_argument('--loadmodel', default='./trained/pretrained_model_KITTI2015.tar',
-                    help='loading model')
-parser.add_argument('--leftimg', default= './VO04_L.png',
-                    help='load model')
-parser.add_argument('--rightimg', default= './VO04_R.png',
-                    help='load model')                                      
+                    help='loading model')                                  
 parser.add_argument('--model', default='stackhourglass',
                     help='select model')
 parser.add_argument('--maxdisp', type=int, default=192,
@@ -35,8 +30,17 @@ parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='enables CUDA training')
 parser.add_argument('--seed', type=int, default=1, metavar='S',
                     help='random seed (default: 1)')
+
 args = parser.parse_args()
-args.cuda = args.no_cuda and torch.cuda.is_available()
+if args.KITTI == '2015':
+    from dataloader import KITTI_submission_loader as DA
+else:
+   from dataloader import KITTI_submission_loader2012 as DA  
+
+test_left_img, test_right_img = DA.dataloader(args.datapath)
+
+
+args.cuda = not args.no_cuda and torch.cuda.is_available()
 
 torch.manual_seed(args.seed)
 if args.cuda:
@@ -64,7 +68,8 @@ def test(imgL,imgR):
 
         if args.cuda:
            imgL = imgL.cuda()
-           imgR = imgR.cuda()     
+           imgR = imgR.cuda()
+    
 
         with torch.no_grad():
             disp = model(imgL,imgR)
@@ -84,45 +89,47 @@ def main():
                             'std': [0.229, 0.224, 0.225]}
         infer_transform = transforms.Compose([transforms.ToTensor(),
                                               transforms.Normalize(**normal_mean_var)])    
+    
+        for inx in range(len(test_left_img)):
 
-        imgL_o = Image.open(args.leftimg).convert('RGB')
-        imgR_o = Image.open(args.rightimg).convert('RGB')
+            imgL_o = Image.open(test_left_img[inx]).convert('RGB')
+            imgR_o = Image.open(test_right_img[inx]).convert('RGB')
 
-        imgL = infer_transform(imgL_o)
-        imgR = infer_transform(imgR_o) 
-       
-
-        # pad to width and hight to 16 times
-        if imgL.shape[1] % 16 != 0:
-            times = imgL.shape[1]//16       
-            top_pad = (times+1)*16 -imgL.shape[1]
-        else:
-            top_pad = 0
-
-        if imgL.shape[2] % 16 != 0:
-            times = imgL.shape[2]//16                       
-            right_pad = (times+1)*16-imgL.shape[2]
-        else:
-            right_pad = 0    
-
-        imgL = F.pad(imgL,(0,right_pad, top_pad,0)).unsqueeze(0)
-        imgR = F.pad(imgR,(0,right_pad, top_pad,0)).unsqueeze(0)
-
-        start_time = time.time()
-        pred_disp = test(imgL,imgR)
-        print('time = %.2f' %(time.time() - start_time))
-
+            imgL = infer_transform(imgL_o)
+            imgR = infer_transform(imgR_o) 
         
-        if top_pad !=0 or right_pad != 0:
-            img = pred_disp[top_pad:,:-right_pad]
-        else:
-            img = pred_disp
+
+            # pad to width and hight to 16 times
+            if imgL.shape[1] % 16 != 0:
+                times = imgL.shape[1]//16       
+                top_pad = (times+1)*16 -imgL.shape[1]
+            else:
+                top_pad = 0
+
+            if imgL.shape[2] % 16 != 0:
+                times = imgL.shape[2]//16                       
+                right_pad = (times+1)*16-imgL.shape[2]
+            else:
+                right_pad = 0    
+
+            imgL = F.pad(imgL,(0,right_pad, top_pad,0)).unsqueeze(0)
+            imgR = F.pad(imgR,(0,right_pad, top_pad,0)).unsqueeze(0)
+
+            start_time = time.time()
+            pred_disp = test(imgL,imgR)
+            print('time = %.2f' %(time.time() - start_time))
+
+            
+            if top_pad !=0 or right_pad != 0:
+                img = pred_disp[top_pad:,:-right_pad]
+            else:
+                img = pred_disp
 
 
-        #save image
-        img = (img*256).astype('uint16')
-        img = Image.fromarray(img)
-        img.save('Test_disparity.png')
+            #save image
+            img = (img*256).astype('uint16')
+            img = Image.fromarray(img)
+            img.save('Test_disparity.png')
 
 if __name__ == '__main__':
    main()

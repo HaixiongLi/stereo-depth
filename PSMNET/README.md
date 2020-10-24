@@ -21,7 +21,9 @@ tested environment
 
 ## installation
 sudo apt install python3-pip
+
 pip3 install torch torchvision
+
 pip3 install tensorboard
 
 
