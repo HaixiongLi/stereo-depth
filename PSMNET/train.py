@@ -15,6 +15,10 @@ from dataloader import KITTILoader as DA
 from models import stackhourglass as psm_net
 from models import basic as basic_net
 from torchvision.utils import save_image
+from torch.utils.tensorboard import SummaryWriter
+
+writer_train = SummaryWriter(log_dir="./logs/train")
+writer_test = SummaryWriter(log_dir="./logs/test")
 
 parser = argparse.ArgumentParser(description='PSMNet')
 parser.add_argument('--maxdisp', type=int ,default=192,
@@ -49,6 +53,7 @@ TrainImgLoader = torch.utils.data.DataLoader(
 TestImgLoader = torch.utils.data.DataLoader(
          DA.myImageFloder(test_left_img,test_right_img,test_left_disp, False), 
          batch_size= 1, shuffle= False, num_workers= 4, drop_last=False)
+
 
 
 
@@ -94,21 +99,20 @@ def train(imgL,imgR, disp_L):
             output3 = torch.squeeze(output3,1)
             
             #TODO! remove this lines after debug
-            save_image(output1/torch.max(output1), 'output1.png')
-            save_image(output2/torch.max(output2), 'output2.png')
-            save_image(output3/torch.max(output3), 'output3.png')
+            # save_image(output1/torch.max(output1), 'output1.png')
+            # save_image(output2/torch.max(output2), 'output2.png')
+            # save_image(output3/torch.max(output3), 'output3.png')
 
             loss = 0.5*F.smooth_l1_loss(output1[mask], disp_true[mask], size_average=True) + 0.7*F.smooth_l1_loss(output2[mask], disp_true[mask], size_average=True) + F.smooth_l1_loss(output3[mask], disp_true[mask], size_average=True) 
             
         elif args.model == 'basic':
             output = model(imgL,imgR)
             output = torch.squeeze(output,1)
-            
+            #save_image(output/torch.max(output), 'output.png')
             loss = F.smooth_l1_loss(output[mask], disp_true[mask], size_average=True)
 
         loss.backward()
         optimizer.step()
-
 
 
         return loss.data
@@ -171,6 +175,7 @@ def adjust_learning_rate(optimizer, epoch):
 
 def main():
     start_full_time = time.time()
+    iteration = 0
     for epoch in range(0, args.epochs):
         print('This is %d-th epoch' %(epoch))
         total_train_loss = 0
@@ -182,6 +187,9 @@ def main():
 
             start_time = time.time()
             loss = train(imgL_crop,imgR_crop, disp_crop_L)
+            iteration +=1
+            writer_train.add_scalar(
+                "total", loss, iteration)
             print('Iter %d training loss = %.3f , time = %.2f' %(batch_idx, loss, time.time() - start_time))
             total_train_loss += loss
             print('epoch %d total training loss = %.3f' %(epoch, total_train_loss))
@@ -204,6 +212,8 @@ def main():
             test_loss = test(imgL,imgR, disp_L)
             print('Iter %d test loss = %.3f' %(batch_idx, test_loss))
             total_test_loss += test_loss
+            writer_test.add_scalar(
+                    "total", test_loss, iteration)
 
         print('total test loss = %.3f' %(total_test_loss/len(TestImgLoader)))
         #----------------------------------------------------------------------------------
@@ -216,3 +226,5 @@ def main():
 
 if __name__ == '__main__':
    main()
+   writer_train.close()
+   writer_test.close()
