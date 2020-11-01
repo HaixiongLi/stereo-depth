@@ -8,9 +8,8 @@ from torchvision.utils import save_image
 
 
 class LRLoss(nn.Module):
-    def __init__(self, disparity_scale=1.0):
+    def __init__(self):
         super(LRLoss, self).__init__()
-        self.Disparityscale = disparity_scale
 
     def forward(self, disp_left,disp_right, left, right):
         estRight = self.bilinear_sampler_1d_h(left, disp_right)
