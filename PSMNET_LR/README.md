@@ -8,8 +8,7 @@ https://github.com/JiaRenChang/PSMNet
 
 
 ### difference 
-
-this repo estimate Left and Right Disparity(original is left only). so you can train without Ground Truth. It is more realistic
+this repo estimate Left and Right Disparity(original is left only). so you can train without Ground Truth. It is more practical to use
 
 
 ### Dependencies
