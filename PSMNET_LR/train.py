@@ -82,7 +82,7 @@ print('Number of model parameters: {}'.format(sum([p.data.nelement() for p in mo
 optimizer = optim.Adam(model.parameters(), lr=0.001, betas=(0.9, 0.999))
 
 
-criterion = LRLoss(disparity_scale=1.0)
+criterion = LRLoss()
 
 
 
