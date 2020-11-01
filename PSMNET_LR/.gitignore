@@ -1,0 +1,4 @@
+result/
+.png
+logs/
+*/*.pyc
